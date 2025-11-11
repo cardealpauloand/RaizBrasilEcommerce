@@ -86,6 +86,34 @@ a{color:inherit}
 .panel{background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:16px; backdrop-filter:blur(6px); transition:var(--transition)}
 .panel:hover{background:rgba(255,255,255,0.08)}
 
+/* Checkout responsive layout */
+.checkout-grid{display:grid; column-gap:36px; row-gap:24px; grid-template-columns:1fr 380px; align-items:start}
+.checkout-summary{position:sticky; top:90px}
+.address-row-cep{display:grid; gap:12px; grid-template-columns:140px 1fr 120px}
+/* Slight visual inset on middle (Rua) field to avoid touching perception */
+.address-row-cep > :nth-child(2){margin-left:2px;margin-right:2px}
+.city-uf-row{display:grid; gap:12; grid-template-columns:1fr 120px}
+.two-col{grid-template-columns:1fr 1fr}
+/* Ensure inputs stretch full width and prevent overlap rounding artifacts */
+.address-row-cep input, .city-uf-row input, .two-col input, .address-row-cep select, .city-uf-row select{width:100%; display:block}
+/* Slight inner padding for grid to avoid collision with adjacent panel */
+form > .panel{padding:20px}
+/* Extra right padding in last column to separate from summary panel visually */
+.checkout-grid > form{padding-right:8px}
+/* Elevate form panels above summary if shadows intersect */
+form .panel{position:relative; z-index:2}
+/* Provide subtle vertical separation between stacked address rows */
+.address-row-cep + .city-uf-row{margin-top:4px}
+/* Increase column gap globally when wide to reduce visual crowding */
+@media (min-width:1100px){ .checkout-grid{column-gap:44px; row-gap:28px} }
+@media (max-width:900px){
+  .checkout-grid{grid-template-columns:1fr}
+  .checkout-summary{position:static}
+  .address-row-cep{grid-template-columns:1fr; gap:12}
+  .city-uf-row{grid-template-columns:1fr}
+  .two-col{grid-template-columns:1fr}
+}
+
 /* cart */
 .cart-panel{position:fixed; right:20px; top:92px; width:320px; max-height:70vh; overflow:auto; background:var(--panel); border:1px solid var(--border); border-radius:12px; box-shadow:var(--shadow-md); padding:14px;}
 

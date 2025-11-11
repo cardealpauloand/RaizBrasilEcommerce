@@ -7,7 +7,7 @@ export default function AdminPanel(){
   const [query, setQuery] = useState('')
   const [showGuestsOnly, setShowGuestsOnly] = useState(false)
   const [expanded, setExpanded] = useState(() => new Set())
-  const STATUSES = ['novo','pago','processando','enviado','entregue','cancelado']
+  const STATUSES = ['novo','aguardando','pago','processando','enviado','entregue','cancelado']
 
   const orders = useMemo(() => {
     const sorted = rawOrders.slice().sort((a,b) => new Date(b.date) - new Date(a.date))

@@ -41,10 +41,11 @@ export default function ProductPage({ id, onAdd }){
                 <button
                   key={t}
                   type="button"
-                  className={`chip size-chip ${size===t ? 'active' : ''}`}
-                  aria-pressed={size===t}
+                  className="chip size-chip"
                   onClick={() => setSize(t)}
                   style={{
+                    border: size===t ? '2px solid var(--accent-solid)' : '1px solid rgba(255,255,255,0.12)',
+                    background: size===t ? 'rgba(255, 221, 87, 0.15)' : 'transparent',
                     fontWeight: size===t ? 700 : 500
                   }}
                 >{t}</button>

@@ -21,7 +21,7 @@ export default {
     return raw ? JSON.parse(raw) : []
   },
   updateOrderStatus(id, status){
-    const ALLOWED = ['novo','pago','processando','enviado','entregue','cancelado']
+    const ALLOWED = ['novo','aguardando','pago','processando','enviado','entregue','cancelado']
     const st = String(status || '').toLowerCase()
     if(!ALLOWED.includes(st)) throw new Error('Status inválido')
     const raw = localStorage.getItem(OrdersKey)
