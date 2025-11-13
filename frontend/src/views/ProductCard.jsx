@@ -19,9 +19,9 @@ export default function ProductCard({product, onView, onAdd}){
         <div className="price">R$ {product.price.toFixed(2)}</div>
       </div>
       <div className="muted" style={{fontSize:13}}>{product.category}</div>
-      <div style={{display:'flex', gap:8, marginTop:8}}>
-        <button className="btn" onClick={() => onView('product', product.id)}>Ver</button>
-        <button className="chip add-btn" onClick={() => onAdd(product.id)}>Adicionar</button>
+      <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginTop:10}}>
+        <button className="btn-secondary" style={{height:40}} onClick={() => onView('product', product.id)} aria-label="Ver detalhes do produto">Ver detalhes</button>
+        <button className="btn" style={{height:40}} onClick={() => onAdd(product.id)} aria-label="Adicionar ao carrinho">Adicionar</button>
       </div>
     </div>
   )

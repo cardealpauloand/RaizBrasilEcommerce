@@ -3,8 +3,8 @@ const KEY_USERS = 'rb_users_v1'
 const KEY_CURRENT = 'rb_current_user'
 
 const defaultUsers = [
-  { id: 'u_admin', name: 'Admin Raiz', email: 'admin@raiz.com', password: 'admin123', isAdmin: true, phone: '', address: '', city: '', state: '', zip: '' },
-  { id: 'u_user', name: 'Cliente', email: 'cliente@raiz.com', password: 'client123', isAdmin: false, phone: '', address: '', city: '', state: '', zip: '' }
+  { id: 'u_admin', name: 'Admin Raiz', email: 'admin@raiz.com', password: 'admin123', isAdmin: true, phone: '', address: '', street:'', number:'', complement:'', city: '', state: '', zip: '' },
+  { id: 'u_user', name: 'Cliente', email: 'cliente@raiz.com', password: 'client123', isAdmin: false, phone: '', address: '', street:'', number:'', complement:'', city: '', state: '', zip: '' }
 ]
 
 function ensure(){
@@ -18,7 +18,7 @@ export default {
     const users = this.list()
     const exists = users.find(u=>u.email === email)
     if(exists) throw new Error('Usuário já existe')
-    const user = { id: 'u_' + Date.now(), name, email, password, isAdmin:false, phone:'', address:'', city:'', state:'', zip:'' }
+  const user = { id: 'u_' + Date.now(), name, email, password, isAdmin:false, phone:'', address:'', street:'', number:'', complement:'', city:'', state:'', zip:'' }
     users.push(user)
     localStorage.setItem(KEY_USERS, JSON.stringify(users))
     localStorage.setItem(KEY_CURRENT, JSON.stringify(user))

@@ -6,16 +6,43 @@ import AuthController from '../controllers/AuthController'
 export default function Checkout({ onComplete }){
   const cart = CartController.getCart()
   const cur = AuthController.current()
-  const [address, setAddress] = useState({
-    name: cur?.name || '',
-    phone: cur?.phone || '',
-    cep: '',
-    street: cur?.address || '',
-    city: '',
-    state: '',
-    number: '',
-    complement: ''
+
+  function parseProfileAddress(u){
+    if(!u) return null
+    // Prefer structured fields from Perfil; fallback to legacy 'address'
+    let street = u.street || ''
+    let number = u.number || ''
+    let complement = u.complement || ''
+    if(!(street && number) && u.address){
+      const full = String(u.address)
+      const m = full.match(/(\d{1,6})/)
+      if(m){
+        const i = m.index || 0
+        number = number || m[1]
+        street = street || full.slice(0, i).replace(/[ ,]+$/,'').trim()
+        const rest = full.slice(i + m[1].length).replace(/^,?\s*/, '')
+        complement = complement || rest
+      }else{
+        street = street || full
+      }
+    }
+    return {
+      name: u.name || '',
+      phone: u.phone || '',
+      cep: u.zip || '',
+      street,
+      number,
+      complement,
+      city: u.city || '',
+      state: u.state || ''
+    }
+  }
+
+  const prefill = useMemo(()=> parseProfileAddress(cur), [cur])
+  const [address, setAddress] = useState(prefill || {
+    name: '', phone: '', cep: '', street: '', city: '', state: '', number: '', complement: ''
   })
+  useEffect(()=>{ if(prefill){ setAddress(a => ({...a, ...prefill})) } }, [prefill?.name, prefill?.phone, prefill?.cep, prefill?.street, prefill?.number, prefill?.complement, prefill?.city, prefill?.state])
   const [payment, setPayment] = useState({ method:'cartao', cardName:'', cardNumber:'', cardExp:'', cardCvv:'' })
   const [step, setStep] = useState('form') // 'form' | 'instructions' | 'done'
   const [pendingOrder, setPendingOrder] = useState(null)

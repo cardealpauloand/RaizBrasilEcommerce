@@ -40,8 +40,9 @@ export default function AuthHub({ onNavigate, onUserChange }) {
     try {
       const user = fn()
       onUserChange && onUserChange(user)
-      // navega imediatamente para perfil
-      onNavigate('profile')
+      // navega automaticamente: após Registro vai direto para Checkout; Login mantém fluxo para Perfil
+      if(action === 'Registro') onNavigate('checkout')
+      else onNavigate('profile')
     } catch (err){ setError(err.message) }
     finally { setLoading(false) }
   }

@@ -4,7 +4,7 @@ const SAMPLE_PRODUCTS = [
     id: 'p1',
     title: 'Camiseta Raiz Brasil Agrícola',
     price: 139.9,
-    category: 'Unissex',
+    category: 'Masculina',
     description: 'Tecido premium, ideal para o dia a dia no campo. Estampa agrícola exclusiva.',
     images: ['/RaizBrasilAgricolaFrente.jpg','/RaizBrasilAgricolaCostas.jpg']
   },
@@ -29,7 +29,7 @@ const SAMPLE_PRODUCTS = [
 export default {
   fetchAll(){
     // In a real app we'd call backend. Here we persist to localStorage for demo
-    const key = 'rb_products_v6' // bump key to refresh data (p1 Unissex, p2/p3 Masculina)
+    const key = 'rb_products_v7' // bump key to refresh data (p1 Masculina)
     const stored = localStorage.getItem(key)
     if(stored){
       try { return JSON.parse(stored) } catch { /* fallthrough to reseed */ }

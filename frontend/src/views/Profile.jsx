@@ -73,9 +73,31 @@ export default function Profile({ onNavigate, onUserChange }){
 
 function ProfileAddressForm({ user, onUserChange }){
   const STATES = ['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO']
+  function parseAddress(u){
+    const full = String(u.address || '')
+    let street = u.street || ''
+    let number = u.number || ''
+    let complement = u.complement || ''
+    if(!street && full){
+      const m = full.match(/(\d{1,6})/)
+      if(m){
+        const i = m.index || 0
+        number = number || m[1]
+        street = full.slice(0, i).replace(/[ ,]+$/,'').trim()
+        const rest = full.slice(i + m[1].length).replace(/^,?\s*/, '')
+        complement = complement || rest
+      }else{
+        street = full
+      }
+    }
+    return { street, number, complement }
+  }
+  const parsed = parseAddress(user)
   const [addr, setAddr] = useState({
     phone: user.phone || '',
-    address: user.address || '',
+    street: parsed.street,
+    number: parsed.number,
+    complement: parsed.complement,
     city: user.city || '',
     state: user.state || '',
     zip: user.zip || ''
@@ -88,8 +110,7 @@ function ProfileAddressForm({ user, onUserChange }){
     e.preventDefault()
     setSaving(true)
     // simple required validation
-    // required
-    const required = ['phone','address','city','state','zip']
+    const required = ['phone','street','number','city','state','zip']
     const missing = required.filter(k => !String(addr[k]||'').trim())
     if(missing.length){ setError('Preencha todos os campos de endereço'); setSaving(false); return }
   if(!String(addr.city).trim()){ setError('Informe a cidade'); setSaving(false); return }
@@ -100,7 +121,17 @@ function ProfileAddressForm({ user, onUserChange }){
     // state: must be a valid UF
     if(!STATES.includes(addr.state)){ setError('Selecione um estado válido.'); setSaving(false); return }
     try{
-  const updated = UserModel.updateCurrent(addr)
+      const legacyAddress = `${addr.street || ''} ${addr.number || ''}${addr.complement ? ', ' + addr.complement : ''}`.trim()
+      const updated = UserModel.updateCurrent({
+        phone: addr.phone,
+        street: addr.street,
+        number: addr.number,
+        complement: addr.complement,
+        city: addr.city,
+        state: addr.state,
+        zip: addr.zip,
+        address: legacyAddress
+      })
       onUserChange && onUserChange(updated)
       setError(null)
       setSaved(true)
@@ -112,10 +143,14 @@ function ProfileAddressForm({ user, onUserChange }){
   return (
     <form onSubmit={save} style={{display:'grid', gap:10}}>
       <div style={{display:'grid', gap:10, gridTemplateColumns:'1fr 1fr'}}>
-  <input required type="tel" placeholder="Telefone (apenas números)" value={addr.phone} inputMode="numeric" onChange={e=>{ const v=e.target.value.replace(/\D/g,''); setAddr({...addr, phone:v}); if(error) setError(null) }} maxLength={11} style={{border: (!String(addr.phone).trim() && error) ? '1px solid #ff6b6b' : undefined}} />
+        <input required type="tel" placeholder="Telefone (apenas números)" value={addr.phone} inputMode="numeric" onChange={e=>{ const v=e.target.value.replace(/\D/g,''); setAddr({...addr, phone:v}); if(error) setError(null) }} maxLength={11} style={{border: (!String(addr.phone).trim() && error) ? '1px solid #ff6b6b' : undefined}} />
         <input required placeholder="CEP (apenas números)" value={addr.zip} onChange={e=>{ const v=e.target.value.replace(/\D/g,''); setAddr({...addr, zip:v}); if(error) setError(null) }} maxLength={8} style={{border: ((!/^\d{8}$/.test(addr.zip)) && error) ? '1px solid #ff6b6b' : undefined}} />
       </div>
-      <input required placeholder="Endereço (rua, número, complemento)" value={addr.address} onChange={e=>{ setAddr({...addr, address:e.target.value}); if(error) setError(null) }} style={{border: (!String(addr.address).trim() && error) ? '1px solid #ff6b6b' : undefined}} />
+      <div style={{display:'grid', gap:10, gridTemplateColumns:'2fr 1fr'}}>
+        <input required placeholder="Rua" value={addr.street} onChange={e=>{ setAddr({...addr, street:e.target.value}); if(error) setError(null) }} style={{border: (!String(addr.street).trim() && error) ? '1px solid #ff6b6b' : undefined}} />
+        <input required placeholder="Número" value={addr.number} onChange={e=>{ const v=e.target.value.replace(/\D/g,''); setAddr({...addr, number:v}); if(error) setError(null) }} style={{border: (!String(addr.number).trim() && error) ? '1px solid #ff6b6b' : undefined}} />
+      </div>
+      <input placeholder="Complemento (opcional)" value={addr.complement} onChange={e=>{ setAddr({...addr, complement:e.target.value}); if(error) setError(null) }} />
       <div style={{display:'grid', gap:10, gridTemplateColumns:'1fr 1fr'}}>
         <input required placeholder="Cidade" value={addr.city} onChange={e=>{ setAddr({...addr, city:e.target.value}); if(error) setError(null) }} style={{border: ((!/^[A-Za-zÀ-ÿ\s]{2,}$/.test(addr.city)) && error) ? '1px solid #ff6b6b' : undefined}} />
         <select className="themed-select" required value={addr.state} onChange={e=>{ setAddr({...addr, state:e.target.value}); if(error) setError(null) }} style={{border: ((!addr.state) && error) ? '1px solid #ff6b6b' : undefined}}>
