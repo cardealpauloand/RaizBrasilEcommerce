@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS products (
   title VARCHAR(200) NOT NULL,
   description TEXT NULL,
   price DECIMAL(10,2) NOT NULL,
+  stock INT NOT NULL DEFAULT 0,
   category_id INT NULL,
   gender ENUM('Masculina','Feminina','Unissex') DEFAULT 'Masculina',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -58,6 +59,76 @@ CREATE TABLE IF NOT EXISTS product_images (
   sort_order INT NOT NULL DEFAULT 0,
   CONSTRAINT fk_pimg_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
+
+-- Audit table for product price changes
+CREATE TABLE IF NOT EXISTS product_price_audit (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  product_id INT NOT NULL,
+  old_price DECIMAL(10,2) NOT NULL,
+  new_price DECIMAL(10,2) NOT NULL,
+  changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_pp_audit_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- Trigger to log price changes
+DROP TRIGGER IF EXISTS trg_products_price_audit;
+DELIMITER $$
+CREATE TRIGGER trg_products_price_audit
+BEFORE UPDATE ON products
+FOR EACH ROW
+BEGIN
+  IF NEW.price <> OLD.price THEN
+    INSERT INTO product_price_audit(product_id, old_price, new_price)
+    VALUES(OLD.id, OLD.price, NEW.price);
+  END IF;
+END$$
+DELIMITER ;
+
+-- Function to verify stock availability
+DROP FUNCTION IF EXISTS fn_has_stock;
+DELIMITER $$
+CREATE FUNCTION fn_has_stock(p_product_id INT, p_qty INT) RETURNS TINYINT
+DETERMINISTIC
+BEGIN
+  DECLARE v_stock INT;
+  SELECT stock INTO v_stock FROM products WHERE id = p_product_id;
+  IF v_stock IS NULL THEN RETURN 0; END IF;
+  IF v_stock >= p_qty THEN RETURN 1; ELSE RETURN 0; END IF;
+END$$
+DELIMITER ;
+
+-- Example procedure to mass-insert demo orders
+DROP PROCEDURE IF EXISTS sp_seed_fake_orders;
+DELIMITER $$
+CREATE PROCEDURE sp_seed_fake_orders(IN p_month INT, IN p_year INT, IN p_count INT)
+BEGIN
+  DECLARE i INT DEFAULT 0;
+  WHILE i < p_count DO
+    INSERT INTO addresses(street, number, city, state, zip)
+    VALUES('Rua Demo','1','Sao Paulo','SP','01001000');
+    SET @addr_id = LAST_INSERT_ID();
+
+    INSERT INTO orders(address_id, status, subtotal, shipping_cost, total, payment_method, created_at)
+    VALUES(@addr_id, 'pago', 100.00, 0.00, 100.00, 'cartao', MAKEDATE(p_year,1) + INTERVAL p_month-1 MONTH + INTERVAL FLOOR(RAND()*28) DAY);
+    SET @order_id = LAST_INSERT_ID();
+
+    SELECT id, price INTO @pid, @pprice FROM products ORDER BY RAND() LIMIT 1;
+    INSERT INTO order_items(order_id, product_id, title, price, qty)
+      SELECT @order_id, id, title, price, 1 FROM products WHERE id=@pid;
+
+    SET i = i + 1;
+  END WHILE;
+END$$
+DELIMITER ;
+
+-- Helpful indexes
+CREATE INDEX IF NOT EXISTS idx_products_category ON products(category_id);
+CREATE INDEX IF NOT EXISTS idx_pimg_product_sort ON product_images(product_id, sort_order);
+CREATE INDEX IF NOT EXISTS idx_orders_user_created ON orders(user_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_orders_status_created ON orders(status, created_at);
+CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id);
+CREATE INDEX IF NOT EXISTS idx_payments_order ON payments(order_id);
+CREATE INDEX IF NOT EXISTS idx_shipments_order ON shipments(order_id);
 
 -- Orders
 CREATE TABLE IF NOT EXISTS orders (

@@ -1,9 +1,14 @@
-import React, {useMemo} from 'react'
+import React, {useEffect, useState} from 'react'
 import ProductController from '../controllers/ProductController'
 import ProductCard from './ProductCard'
 
 export default function Home({ onNavigate, onAdd }){
-  const featured = useMemo(()=> ProductController.list().slice(0,3), [])
+  const [featured, setFeatured] = useState([])
+  useEffect(()=>{
+    let alive = true
+    ProductController.list().then(list => { if(alive) setFeatured(list.slice(0,3)) }).catch(()=> setFeatured([]))
+    return ()=>{ alive=false }
+  }, [])
   return (
     <div className="container" style={{paddingTop:24}}>
       <section className="hero">

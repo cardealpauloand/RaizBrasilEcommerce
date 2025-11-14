@@ -21,3 +21,10 @@ INSERT INTO product_images (product_id, url, sort_order)
 SELECT p.id, '/RaizBrasilAzulFrente.jpg', 0 FROM products p WHERE p.title='Camiseta Raiz Brasil Azul';
 INSERT INTO product_images (product_id, url, sort_order)
 SELECT p.id, '/RaizBrasilAzulECinzaFrente.jpg', 0 FROM products p WHERE p.title='Camiseta Raiz Brasil Azul & Cinza';
+
+-- Set initial stock to 100 for each product
+UPDATE products SET stock = 100 WHERE title IN (
+	'Camiseta Raiz Brasil Agrícola',
+	'Camiseta Raiz Brasil Azul',
+	'Camiseta Raiz Brasil Azul & Cinza'
+);

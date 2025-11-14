@@ -1,4 +1,5 @@
 // ProductModel - holds initial product data and persistence
+const KEY = 'rb_products_v7'
 const SAMPLE_PRODUCTS = [
   {
     id: 'p1',
@@ -29,15 +30,17 @@ const SAMPLE_PRODUCTS = [
 export default {
   fetchAll(){
     // In a real app we'd call backend. Here we persist to localStorage for demo
-    const key = 'rb_products_v7' // bump key to refresh data (p1 Masculina)
-    const stored = localStorage.getItem(key)
+    const stored = localStorage.getItem(KEY)
     if(stored){
       try { return JSON.parse(stored) } catch { /* fallthrough to reseed */ }
     }
     // clean old keys to avoid confusion
     ;['rb_products_v1','rb_products_v2','rb_products_v3','rb_products_v4','rb_products_v5'].forEach(k=> localStorage.removeItem(k))
-    localStorage.setItem(key, JSON.stringify(SAMPLE_PRODUCTS))
+    localStorage.setItem(KEY, JSON.stringify(SAMPLE_PRODUCTS))
     return SAMPLE_PRODUCTS
+  },
+  setAll(list){
+    try{ localStorage.setItem(KEY, JSON.stringify(list)) }catch{}
   },
   findById(id){
     const all = this.fetchAll()

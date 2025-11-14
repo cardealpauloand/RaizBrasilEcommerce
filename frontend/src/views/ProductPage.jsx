@@ -1,12 +1,17 @@
-import React, {useState} from 'react'
+import React, {useEffect, useState} from 'react'
 import ProductController from '../controllers/ProductController'
 
 export default function ProductPage({ id, onAdd }){
-  const p = ProductController.get(id)
+  const [p, setP] = useState(null)
   const [current, setCurrent] = useState(0)
   const [size, setSize] = useState('M')
-  if(!p) return <div className="container">Produto não encontrado</div>
-  const imgs = p.images || [p.image]
+  useEffect(()=>{
+    let alive = true
+    ProductController.get(id).then(prod=>{ if(alive) setP(prod) }).catch(()=> setP(null))
+    return ()=>{ alive=false }
+  }, [id])
+  if(!p) return <div className="container" style={{paddingTop:20}}>Produto não encontrado</div>
+  const imgs = p.images || (p.image ? [p.image] : [])
   return (
     <div className="container" style={{paddingTop:20}}>
       <div style={{display:'flex', gap:18, flexWrap:'wrap'}}>

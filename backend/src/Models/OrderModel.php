@@ -39,10 +39,22 @@ class OrderModel extends BaseModel
             ]);
             $orderId = (int)$this->db->lastInsertId();
 
-            // Items
+            // Items with stock validation and decrement
             $items = $payload['items'] ?? [];
             $itStmt = $this->db->prepare('INSERT INTO order_items (order_id, product_id, title, price, qty, size) VALUES (?,?,?,?,?,?)');
+            $decStmt = $this->db->prepare('UPDATE products SET stock = stock - ? WHERE id = ?');
             foreach ($items as $it) {
+                // If productId present, validate stock
+                if (!empty($it['productId'])) {
+                    $pid = (int)$it['productId'];
+                    $qty = (int)($it['qty'] ?? 1);
+                    $chk = $this->db->prepare('SELECT fn_has_stock(?, ?) AS ok');
+                    $chk->execute([$pid, $qty]);
+                    $ok = (int)$chk->fetchColumn();
+                    if ($ok !== 1) {
+                        throw new \RuntimeException('Sem estoque para o produto ID ' . $pid);
+                    }
+                }
                 $itStmt->execute([
                     $orderId,
                     $it['productId'] ?? null,
@@ -51,6 +63,9 @@ class OrderModel extends BaseModel
                     $it['qty'] ?? 1,
                     $it['size'] ?? 'M',
                 ]);
+                if (!empty($it['productId'])) {
+                    $decStmt->execute([(int)($it['qty'] ?? 1), (int)$it['productId']]);
+                }
             }
 
             // Payment record
@@ -90,5 +105,24 @@ class OrderModel extends BaseModel
         $pay->execute([$id]);
         $order['payment'] = $pay->fetch();
         return $order;
+    }
+
+    public function listAll(): array
+    {
+        $stmt = $this->db->query('SELECT * FROM orders ORDER BY created_at DESC');
+        return $stmt->fetchAll();
+    }
+
+    public function updateStatus(int $id, string $status): void
+    {
+        $allowed = ['novo','aguardando','pago','processando','enviado','entregue','cancelado'];
+        if (!in_array($status, $allowed, true)) throw new \InvalidArgumentException('Status invalido');
+        $stmt = $this->db->prepare('UPDATE orders SET status = ? WHERE id = ?');
+        $stmt->execute([$status, $id]);
+        // reflect on payment table if relevant
+        if (in_array($status, ['pago','aguardando'], true)) {
+            $p = $this->db->prepare('UPDATE payments SET status = ? WHERE order_id = ?');
+            $p->execute([$status === 'pago' ? 'pago' : 'aguardando', $id]);
+        }
     }
 }

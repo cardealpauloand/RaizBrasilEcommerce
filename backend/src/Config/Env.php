@@ -28,6 +28,10 @@ class Env
                 if (str_starts_with(trim($line), '#')) continue;
                 [$k, $v] = array_map('trim', explode('=', $line, 2) + [null, null]);
                 if ($k !== null && $v !== null) {
+                    // Strip optional wrapping quotes from values ("..." or '...')
+                    if ((str_starts_with($v, '"') && str_ends_with($v, '"')) || (str_starts_with($v, "'") && str_ends_with($v, "'"))) {
+                        $v = substr($v, 1, -1);
+                    }
                     $_ENV[$k] = $v;
                     putenv("$k=$v");
                 }

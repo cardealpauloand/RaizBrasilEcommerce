@@ -9,20 +9,24 @@ export default function ProductList({ onNavigate, onAdd }){
   const [categories, setCategories] = useState([])
 
   useEffect(()=>{
-    setProducts(ProductController.list())
-    setCategories(ProductController.categories())
+    let alive = true
+    ProductController.list().then(set=>{ if(alive) setProducts(set) })
+    ProductController.categories().then(c=>{ if(alive) setCategories(c) })
+    return ()=>{ alive=false }
   }, [])
 
   function handleSearch(q){
     setQuery(q)
-    const res = ProductController.search(q)
-    setProducts(res.filter(p => !category || p.category === category))
+    ProductController.search(q).then(res=>{
+      setProducts(res.filter(p => !category || p.category === category))
+    })
   }
 
   function handleCategory(c){
     setCategory(c)
-    const res = ProductController.search(query)
-    setProducts(res.filter(p => !c || p.category === c))
+    ProductController.search(query).then(res=>{
+      setProducts(res.filter(p => !c || p.category === c))
+    })
   }
 
   return (

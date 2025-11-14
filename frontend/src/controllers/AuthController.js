@@ -24,12 +24,19 @@ export default {
     const ALLOWED = ['novo','aguardando','pago','processando','enviado','entregue','cancelado']
     const st = String(status || '').toLowerCase()
     if(!ALLOWED.includes(st)) throw new Error('Status inválido')
-    const raw = localStorage.getItem(OrdersKey)
-    const orders = raw ? JSON.parse(raw) : []
-    const idx = orders.findIndex(o => o.id === id)
-    if(idx === -1) throw new Error('Pedido não encontrado')
-    orders[idx] = { ...orders[idx], status: st }
-    localStorage.setItem(OrdersKey, JSON.stringify(orders))
-    return orders[idx]
+    // Try backend first
+    try{
+      const oid = String(id).replace(/^ord_/,'')
+      return api.post('/api/orders/' + oid + '/status', { status: st })
+    }catch(e){
+      // Fallback local
+      const raw = localStorage.getItem(OrdersKey)
+      const orders = raw ? JSON.parse(raw) : []
+      const idx = orders.findIndex(o => o.id === id)
+      if(idx === -1) throw new Error('Pedido não encontrado')
+      orders[idx] = { ...orders[idx], status: st }
+      localStorage.setItem(OrdersKey, JSON.stringify(orders))
+      return orders[idx]
+    }
   }
 }

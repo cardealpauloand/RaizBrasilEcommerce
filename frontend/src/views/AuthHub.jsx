@@ -35,31 +35,29 @@ export default function AuthHub({ onNavigate, onUserChange }) {
   function validatePassword(pw){ return typeof pw === 'string' && pw.length >= 6 }
   function validateName(name){ return /^[A-Za-zÀ-ÿ\s]{2,}$/.test(name) }
 
-  function run(action, fn){
+  async function run(action, fn){
     setLoading(true); setError(null); setSuccess(null)
     try {
-      const user = fn()
+      const user = await fn()
       onUserChange && onUserChange(user)
-      // navega automaticamente: após Registro vai direto para Checkout; Login mantém fluxo para Perfil
-      if(action === 'Registro') onNavigate('checkout')
-      else onNavigate('profile')
+      onNavigate('profile')
     } catch (err){ setError(err.message) }
     finally { setLoading(false) }
   }
 
-  function submitLogin(e){
+  async function submitLogin(e){
     e.preventDefault()
     if(!validateEmail(login.email)) return setError('Email inválido')
     if(!validatePassword(login.password)) return setError('Senha deve ter 6+ caracteres')
-    run('Login', () => AuthController.login(login))
+    await run('Login', () => AuthController.login(login))
   }
 
-  function submitRegister(e){
+  async function submitRegister(e){
     e.preventDefault()
     if(!validateName(reg.name)) return setError('Nome inválido (2+ letras)')
     if(!validateEmail(reg.email)) return setError('Email inválido')
     if(!validatePassword(reg.password)) return setError('Senha deve ter 6+ caracteres')
-    run('Registro', () => AuthController.register(reg))
+    await run('Registro', () => AuthController.register(reg))
   }
 
   const current = AuthController.current()

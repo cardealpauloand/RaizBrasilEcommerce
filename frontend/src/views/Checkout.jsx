@@ -137,14 +137,14 @@ export default function Checkout({ onComplete }){
     setBoletoLinha(linha)
   }
 
-  function place(e){
+  async function place(e){
     e.preventDefault()
     if(cart.items.length === 0) return alert('Carrinho vazio')
     if(!validate()) return
-    setProcessing(true)
-    setTimeout(()=>{
+    try{
+      setProcessing(true)
       const status = payment.method === 'cartao' ? 'pago' : 'aguardando'
-      const order = AuthController.placeOrder({
+      const order = await AuthController.placeOrder({
         items: cart.items,
         total,
         subtotal,
@@ -156,7 +156,6 @@ export default function Checkout({ onComplete }){
       if(payment.method === 'cartao'){
         CartController.clear(); setProcessing(false); setStep('done'); onComplete(order)
       }else{
-        // generate payment artifacts
         if(payment.method === 'pix') generatePix()
         if(payment.method === 'boleto') generateBoleto()
         CartController.clear()
@@ -164,7 +163,16 @@ export default function Checkout({ onComplete }){
         setProcessing(false)
         setStep('instructions')
       }
-    }, 900)
+    }catch(err){
+      console.error(err)
+      setProcessing(false)
+      const msg = (err && err.message) ? String(err.message) : ''
+      if(/Sem estoque|estoque/i.test(msg)){
+        alert('Não temos estoque suficiente para um dos itens. Por favor, ajuste as quantidades.')
+      } else {
+        alert('Não foi possível finalizar seu pedido agora. Tente novamente.')
+      }
+    }
   }
 
   function finalizePayment(){
