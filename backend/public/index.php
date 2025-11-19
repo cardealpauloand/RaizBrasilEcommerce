@@ -44,5 +44,6 @@ $router->get('/api/orders', [OrderController::class, 'index']);
 $router->post('/api/orders', [OrderController::class, 'create']);
 $router->get('/api/orders/{id}', [OrderController::class, 'show']);
 $router->post('/api/orders/{id}/status', [OrderController::class, 'updateStatus']);
+$router->delete('/api/orders/{id}', [OrderController::class, 'destroy']);
 
 $router->dispatch();

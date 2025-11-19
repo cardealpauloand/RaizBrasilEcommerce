@@ -1,10 +1,7 @@
--- Raiz Brasil Ecommerce - MySQL schema
--- Run in a new database (e.g., raiz_brasil)
 
 SET NAMES utf8mb4;
 SET time_zone = '+00:00';
 
--- Users
 CREATE TABLE IF NOT EXISTS users (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(120) NOT NULL,
@@ -16,7 +13,6 @@ CREATE TABLE IF NOT EXISTS users (
   updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
--- Addresses (shipping addresses)
 CREATE TABLE IF NOT EXISTS addresses (
   id INT AUTO_INCREMENT PRIMARY KEY,
   user_id INT NULL,
@@ -32,13 +28,11 @@ CREATE TABLE IF NOT EXISTS addresses (
   CONSTRAINT fk_addresses_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
--- Categories
 CREATE TABLE IF NOT EXISTS categories (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(120) NOT NULL UNIQUE
 ) ENGINE=InnoDB;
 
--- Products
 CREATE TABLE IF NOT EXISTS products (
   id INT AUTO_INCREMENT PRIMARY KEY,
   title VARCHAR(200) NOT NULL,
@@ -51,7 +45,6 @@ CREATE TABLE IF NOT EXISTS products (
   CONSTRAINT fk_products_category FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
--- Product images
 CREATE TABLE IF NOT EXISTS product_images (
   id INT AUTO_INCREMENT PRIMARY KEY,
   product_id INT NOT NULL,
@@ -60,7 +53,6 @@ CREATE TABLE IF NOT EXISTS product_images (
   CONSTRAINT fk_pimg_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
--- Audit table for product price changes
 CREATE TABLE IF NOT EXISTS product_price_audit (
   id INT AUTO_INCREMENT PRIMARY KEY,
   product_id INT NOT NULL,
@@ -70,7 +62,6 @@ CREATE TABLE IF NOT EXISTS product_price_audit (
   CONSTRAINT fk_pp_audit_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
--- Trigger to log price changes
 DROP TRIGGER IF EXISTS trg_products_price_audit;
 DELIMITER $$
 CREATE TRIGGER trg_products_price_audit
@@ -84,7 +75,6 @@ BEGIN
 END$$
 DELIMITER ;
 
--- Function to verify stock availability
 DROP FUNCTION IF EXISTS fn_has_stock;
 DELIMITER $$
 CREATE FUNCTION fn_has_stock(p_product_id INT, p_qty INT) RETURNS TINYINT
@@ -97,7 +87,6 @@ BEGIN
 END$$
 DELIMITER ;
 
--- Example procedure to mass-insert demo orders
 DROP PROCEDURE IF EXISTS sp_seed_fake_orders;
 DELIMITER $$
 CREATE PROCEDURE sp_seed_fake_orders(IN p_month INT, IN p_year INT, IN p_count INT)
@@ -121,7 +110,6 @@ BEGIN
 END$$
 DELIMITER ;
 
--- Helpful indexes
 CREATE INDEX IF NOT EXISTS idx_products_category ON products(category_id);
 CREATE INDEX IF NOT EXISTS idx_pimg_product_sort ON product_images(product_id, sort_order);
 CREATE INDEX IF NOT EXISTS idx_orders_user_created ON orders(user_id, created_at);
@@ -130,7 +118,6 @@ CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id);
 CREATE INDEX IF NOT EXISTS idx_payments_order ON payments(order_id);
 CREATE INDEX IF NOT EXISTS idx_shipments_order ON shipments(order_id);
 
--- Orders
 CREATE TABLE IF NOT EXISTS orders (
   id INT AUTO_INCREMENT PRIMARY KEY,
   user_id INT NULL,
@@ -145,7 +132,6 @@ CREATE TABLE IF NOT EXISTS orders (
   CONSTRAINT fk_orders_address FOREIGN KEY (address_id) REFERENCES addresses(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
--- Order items
 CREATE TABLE IF NOT EXISTS order_items (
   id INT AUTO_INCREMENT PRIMARY KEY,
   order_id INT NOT NULL,
@@ -158,7 +144,6 @@ CREATE TABLE IF NOT EXISTS order_items (
   CONSTRAINT fk_oitems_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
--- Payments
 CREATE TABLE IF NOT EXISTS payments (
   id INT AUTO_INCREMENT PRIMARY KEY,
   order_id INT NOT NULL,
@@ -171,7 +156,6 @@ CREATE TABLE IF NOT EXISTS payments (
   CONSTRAINT fk_payments_order FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
--- Shipments
 CREATE TABLE IF NOT EXISTS shipments (
   id INT AUTO_INCREMENT PRIMARY KEY,
   order_id INT NOT NULL,

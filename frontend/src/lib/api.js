@@ -30,7 +30,9 @@ async function request(path, { method='GET', body, headers }={}){
 
 export const api = {
   get: (p)=> request(p, { method:'GET' }),
-  post: (p, body)=> request(p, { method:'POST', body })
+  post: (p, body)=> request(p, { method:'POST', body }),
+  put: (p, body)=> request(p, { method:'PUT', body }),
+  delete: (p)=> request(p, { method:'DELETE' })
 }
 
 export const API_BASE = { get: base }

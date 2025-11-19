@@ -1,4 +1,6 @@
 -- Seed basic data
+USE raiz_brasil;
+
 INSERT INTO categories (name) VALUES ('Camisetas') ON DUPLICATE KEY UPDATE name=VALUES(name);
 
 -- Insert sample products

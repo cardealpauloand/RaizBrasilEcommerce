@@ -125,4 +125,50 @@ class OrderModel extends BaseModel
             $p->execute([$status === 'pago' ? 'pago' : 'aguardando', $id]);
         }
     }
+
+    public function delete(int $id): void
+    {
+        $this->db->beginTransaction();
+        try {
+            $stmt = $this->db->prepare('SELECT id, status, address_id FROM orders WHERE id = ?');
+            $stmt->execute([$id]);
+            $order = $stmt->fetch();
+            if (!$order) { $this->db->rollBack(); throw new \RuntimeException('Pedido não encontrado'); }
+
+            $status = strtolower((string)$order['status']);
+            $addrId = (int)$order['address_id'];
+
+            // Restore stock for items if order not shipped/delivered
+            if (!in_array($status, ['enviado','entregue'], true)) {
+                $it = $this->db->prepare('SELECT product_id, qty FROM order_items WHERE order_id = ? AND product_id IS NOT NULL');
+                $it->execute([$id]);
+                $rows = $it->fetchAll();
+                if ($rows) {
+                    $inc = $this->db->prepare('UPDATE products SET stock = stock + ? WHERE id = ?');
+                    foreach ($rows as $r) {
+                        $inc->execute([(int)$r['qty'], (int)$r['product_id']]);
+                    }
+                }
+            }
+
+            // Delete order (cascades order_items, payments, shipments)
+            $del = $this->db->prepare('DELETE FROM orders WHERE id = ?');
+            $del->execute([$id]);
+
+            // Optional: cleanup address if no other order references it
+            if ($addrId) {
+                $cnt = $this->db->prepare('SELECT COUNT(*) FROM orders WHERE address_id = ?');
+                $cnt->execute([$addrId]);
+                if ((int)$cnt->fetchColumn() === 0) {
+                    $da = $this->db->prepare('DELETE FROM addresses WHERE id = ?');
+                    $da->execute([$addrId]);
+                }
+            }
+
+            $this->db->commit();
+        } catch (\Throwable $e) {
+            if ($this->db->inTransaction()) $this->db->rollBack();
+            throw $e;
+        }
+    }
 }

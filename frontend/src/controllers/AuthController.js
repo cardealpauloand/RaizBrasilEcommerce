@@ -1,4 +1,5 @@
 import UserModel from '../models/UserModel'
+import { api } from '../lib/api'
 const OrdersKey = 'rb_orders_v1'
 
 export default {
@@ -25,10 +26,8 @@ export default {
     const st = String(status || '').toLowerCase()
     if(!ALLOWED.includes(st)) throw new Error('Status inválido')
     // Try backend first
-    try{
-      const oid = String(id).replace(/^ord_/,'')
-      return api.post('/api/orders/' + oid + '/status', { status: st })
-    }catch(e){
+    return api.post('/api/orders/' + String(id).replace(/^ord_/,'') + '/status', { status: st })
+      .catch(() => {
       // Fallback local
       const raw = localStorage.getItem(OrdersKey)
       const orders = raw ? JSON.parse(raw) : []
@@ -37,6 +36,20 @@ export default {
       orders[idx] = { ...orders[idx], status: st }
       localStorage.setItem(OrdersKey, JSON.stringify(orders))
       return orders[idx]
+    })
+  },
+  async deleteOrder(id){
+    const oid = String(id).replace(/^ord_/,'')
+    try{
+      await api.delete('/api/orders/' + oid)
+      return true
+    }catch{
+      // Fallback: remove from local storage
+      const raw = localStorage.getItem(OrdersKey)
+      const orders = raw ? JSON.parse(raw) : []
+      const next = orders.filter(o => String(o.id) !== String(id))
+      localStorage.setItem(OrdersKey, JSON.stringify(next))
+      return true
     }
   }
 }

@@ -51,6 +51,8 @@ a{color:inherit}
 .btn:active{transform:translateY(0) scale(.97)}
 .btn-secondary{background:var(--panel); color:var(--text); padding:10px 16px; border-radius:var(--radius-sm); font-weight:600; cursor:pointer; border:1px solid var(--border); box-shadow:none; transition:var(--transition)}
 .btn-secondary:hover{background:var(--panel-hover); box-shadow:var(--shadow-sm)}
+.btn-danger{background:var(--danger); color:#1a1c1e; padding:10px 16px; border-radius:var(--radius-sm); font-weight:700; cursor:pointer; border:1px solid rgba(0,0,0,0.2); transition:var(--transition)}
+.btn-danger:hover{filter:brightness(1.05); transform:translateY(-1px)}
 .btn.text-white, .btn.text-white:hover{ color:var(--accent-contrast) !important }
 .chip{background:var(--panel); padding:6px 12px; border-radius:999px; border:1px solid var(--border); font-size:12px; display:inline-flex; align-items:center; gap:6px; backdrop-filter:blur(4px);}
 .chip button, .chip span, .chip{ color: #ffffff }

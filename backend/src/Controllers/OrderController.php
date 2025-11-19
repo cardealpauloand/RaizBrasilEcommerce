@@ -54,4 +54,20 @@ class OrderController
             Response::json(['ok'=>true]);
         }catch(\Throwable $e){ Response::json(['error'=>'Failed to update status','message'=>$e->getMessage()], 400); }
     }
+
+    public function destroy(Request $req): void
+    {
+        $id = (int)($req->params['id'] ?? 0);
+        try{
+            $this->orders->delete($id);
+            Response::json(['ok'=>true]);
+        }catch(\Throwable $e){
+            $msg = $e->getMessage();
+            if (stripos($msg, 'não encontrado') !== false || stripos($msg, 'not found') !== false) {
+                Response::json(['error'=>'Not Found'], 404);
+                return;
+            }
+            Response::json(['error'=>'Failed to delete order','message'=>$msg], 400);
+        }
+    }
 }

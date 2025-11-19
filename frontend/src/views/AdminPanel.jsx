@@ -18,9 +18,22 @@ export default function AdminPanel(){
     ;(async()=>{
       try{
         const data = await api.get('/api/orders')
-        if(alive) setKpiOrders(Array.isArray(data) ? data : [])
+        if(alive){
+          setKpiOrders(Array.isArray(data) ? data : [])
+          setRawOrders(Array.isArray(data) ? data.map(o => ({
+            id: o.id,
+            date: o.created_at || new Date().toISOString(),
+            status: o.status,
+            total: o.total,
+            items: [],
+            user: o.user_id ? { id:o.user_id, name:'', email:'' } : null
+          })) : AuthController.listOrders())
+        }
       }catch{
-        if(alive) setKpiOrders(AuthController.listOrders())
+        if(alive){
+          setKpiOrders(AuthController.listOrders())
+          setRawOrders(AuthController.listOrders())
+        }
       }finally{
         if(alive) setKpiLoading(false)
       }
@@ -72,10 +85,21 @@ export default function AdminPanel(){
   }
 
   function handleStatusChange(id, status){
+    AuthController.updateOrderStatus(id, status)
+      .then(()=> setRawOrders(AuthController.listOrders()))
+      .catch(err=> alert(err.message))
+  }
+
+  async function handleDelete(id){
+    const sure = confirm(`Excluir pedido #${id}? Esta ação não pode ser desfeita.`)
+    if(!sure) return
     try{
-      AuthController.updateOrderStatus(id, status)
-      setRawOrders(AuthController.listOrders())
-    }catch(err){ alert(err.message) }
+      await AuthController.deleteOrder(id)
+      // Remover da lista local imediata
+      setRawOrders(prev => prev.filter(o => o.id !== id))
+      // Atualizar KPIs puxando do backend (best effort)
+      try{ setKpiOrders(await api.get('/api/orders')) }catch{}
+    }catch(e){ alert(e?.message || 'Falha ao excluir pedido') }
   }
 
   function exportCsv(){
@@ -179,6 +203,7 @@ export default function AdminPanel(){
                       </select>
                       <div className="chip">Total R$ {Number(o.total).toFixed(2)}</div>
                       <button className="btn-secondary" onClick={()=>toggle(o.id)}>{isOpen ? 'Ocultar itens' : 'Ver itens'}</button>
+                      <button className="btn-danger" onClick={()=>handleDelete(o.id)}>Excluir</button>
                     </div>
                   </div>
 
