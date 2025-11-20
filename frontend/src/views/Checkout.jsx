@@ -4,8 +4,16 @@ import AuthController from '../controllers/AuthController'
 
 // Checkout com UX aprimorada inspirado em grandes e-commerces
 export default function Checkout({ onComplete }){
-  const cart = CartController.getCart()
+  const [cart, setCart] = useState({items:[]})
   const cur = AuthController.current()
+  const [loadingCart, setLoadingCart] = useState(true)
+
+  useEffect(() => {
+    CartController.getCart()
+      .then(setCart)
+      .catch(console.error)
+      .finally(() => setLoadingCart(false))
+  }, [])
 
   function parseProfileAddress(u){
     if(!u) return null
@@ -253,6 +261,17 @@ export default function Checkout({ onComplete }){
             <button className="btn" onClick={()=>onComplete(pendingOrder || {})}>Ver confirmação</button>
             <button className="btn-secondary" onClick={()=>location.hash='#home'}>Voltar à Home</button>
           </div>
+        </div>
+      </div>
+    )
+  }
+
+  if(loadingCart){
+    return (
+      <div className="container" style={{paddingTop:24}}>
+        <h2 style={{marginTop:0}}>Carregando carrinho...</h2>
+        <div className="panel" style={{display:'grid', gap:12, alignItems:'center', justifyItems:'center', padding:28}}>
+          <div style={{fontSize:14}}>Aguarde um momento...</div>
         </div>
       </div>
     )

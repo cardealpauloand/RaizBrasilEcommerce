@@ -1,42 +1,79 @@
 import CartModel from '../models/CartModel'
 import ProductModel from '../models/ProductModel'
 
-function makeItem(product, qty=1, size='M'){
-  return { productId: product.id, title: product.title, price: product.price, qty, size }
-}
-
 export default {
-  getCart(){
-    return CartModel.load()
+  // Load cart from backend or localStorage
+  async getCart() {
+    return await CartModel.load()
   },
-  add(productId, qty=1, size='M'){
+
+  // Add item to cart
+  async add(productId, qty = 1, size = 'M') {
     const product = ProductModel.findById(productId)
-    if(!product) throw new Error('Produto não encontrado')
-    const cart = CartModel.load()
-    const found = cart.items.find(i => i.productId === productId && (i.size||'M') === size)
-    if(found) found.qty += qty
-    else cart.items.push(makeItem(product, qty, size))
-    CartModel.save(cart)
-    return cart
+    if (!product) throw new Error('Produto não encontrado')
+
+    try {
+      // Try to add via API if authenticated
+      return await CartModel.addItem(productId, qty, size)
+    } catch (err) {
+      // Fallback to localStorage for non-authenticated users
+      if (!localStorage.getItem('rb_token_v1')) {
+        const cart = CartModel.loadLocal()
+        const found = cart.items.find(i => i.product_id === productId && (i.size || 'M') === size)
+        if (found) {
+          found.qty += qty
+        } else {
+          cart.items.push({ product_id: productId, title: product.title, price: product.price, qty, size })
+        }
+        CartModel.saveLocal(cart)
+        return cart
+      }
+      throw err
+    }
   },
-  update(productId, qty, size='M'){
-    const cart = CartModel.load()
-    const found = cart.items.find(i => i.productId === productId && (i.size||'M') === size)
-    if(found) found.qty = Math.max(0, qty)
-    cart.items = cart.items.filter(i => i.qty > 0)
-    CartModel.save(cart)
-    return cart
+
+  // Update item quantity
+  async update(itemId, qty, size = 'M') {
+    if (qty <= 0) {
+      return await this.remove(itemId)
+    }
+
+    try {
+      await CartModel.updateItem(itemId, qty)
+      return await CartModel.load()
+    } catch (err) {
+      // Only works with authentication
+      throw err
+    }
   },
-  remove(productId, size='M'){
-    const cart = CartModel.load()
-    cart.items = cart.items.filter(i => !(i.productId === productId && (i.size||'M') === size))
-    CartModel.save(cart)
-    return cart
+
+  // Remove item from cart
+  async remove(itemId, size = 'M') {
+    try {
+      await CartModel.removeItem(itemId)
+      return await CartModel.load()
+    } catch (err) {
+      // Fallback for localStorage
+      if (!localStorage.getItem('rb_token_v1')) {
+        const cart = CartModel.loadLocal()
+        // For localStorage, itemId is actually productId
+        cart.items = cart.items.filter(i => !(i.product_id === itemId && (i.size || 'M') === size))
+        CartModel.saveLocal(cart)
+        return cart
+      }
+      throw err
+    }
   },
-  total(){
-    const cart = CartModel.load()
-    const sum = cart.items.reduce((s,i)=> s + i.price * i.qty, 0)
+
+  // Calculate total
+  async total() {
+    const cart = await CartModel.load()
+    const sum = cart.items.reduce((s, i) => s + (i.price || 0) * (i.qty || 1), 0)
     return Number(sum.toFixed(2))
   },
-  clear(){ CartModel.clear() }
+
+  // Clear entire cart
+  async clear() {
+    return await CartModel.clear()
+  }
 }

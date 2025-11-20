@@ -113,6 +113,13 @@ class OrderModel extends BaseModel
         return $stmt->fetchAll();
     }
 
+    public function listByUser(int $userId): array
+    {
+        $stmt = $this->db->prepare('SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC');
+        $stmt->execute([$userId]);
+        return $stmt->fetchAll();
+    }
+
     public function updateStatus(int $id, string $status): void
     {
         $allowed = ['novo','aguardando','pago','processando','enviado','entregue','cancelado'];

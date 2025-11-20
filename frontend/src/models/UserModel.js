@@ -1,51 +1,90 @@
-// Simple UserModel with localStorage-based users and current user persistence
-const KEY_USERS = 'rb_users_v1'
+// UserModel with JWT-based authentication and backend API integration
+import { api } from '../lib/api.js'
+
+const KEY_TOKEN = 'rb_token_v1'
 const KEY_CURRENT = 'rb_current_user'
 
-const defaultUsers = [
-  { id: 'u_admin', name: 'Admin Raiz', email: 'admin@raiz.com', password: 'admin123', isAdmin: true, phone: '', address: '', street:'', number:'', complement:'', city: '', state: '', zip: '' },
-  { id: 'u_user', name: 'Cliente', email: 'cliente@raiz.com', password: 'client123', isAdmin: false, phone: '', address: '', street:'', number:'', complement:'', city: '', state: '', zip: '' }
-]
-
-function ensure(){
-  if(!localStorage.getItem(KEY_USERS)) localStorage.setItem(KEY_USERS, JSON.stringify(defaultUsers))
-}
-
 export default {
-  list(){ ensure(); return JSON.parse(localStorage.getItem(KEY_USERS)) },
-  create({name,email,password}){
-    ensure()
-    const users = this.list()
-    const exists = users.find(u=>u.email === email)
-    if(exists) throw new Error('Usuário já existe')
-  const user = { id: 'u_' + Date.now(), name, email, password, isAdmin:false, phone:'', address:'', street:'', number:'', complement:'', city:'', state:'', zip:'' }
-    users.push(user)
-    localStorage.setItem(KEY_USERS, JSON.stringify(users))
-    localStorage.setItem(KEY_CURRENT, JSON.stringify(user))
-    return user
+  // Get the stored JWT token
+  getToken() {
+    return localStorage.getItem(KEY_TOKEN)
   },
-  login({email,password}){
-    ensure()
-    const u = this.list().find(x => x.email === email && x.password === password)
-    if(!u) throw new Error('Credenciais inválidas')
-    localStorage.setItem(KEY_CURRENT, JSON.stringify(u))
-    return u
+
+  // Get the current user from localStorage
+  current() {
+    return JSON.parse(localStorage.getItem(KEY_CURRENT))
   },
-  logout(){ localStorage.removeItem(KEY_CURRENT) },
-  current(){ return JSON.parse(localStorage.getItem(KEY_CURRENT)) },
-  ensureAdmin(){
-    const cur = this.current()
-    return cur && cur.isAdmin
+
+  // Register a new user
+  async register({ name, email, password }) {
+    try {
+      const response = await api.post('/api/register', { name, email, password })
+      if (!response || response.error) {
+        throw new Error(response?.error || 'Erro ao registrar')
+      }
+      return response
+    } catch (err) {
+      throw new Error(err.message || 'Erro ao registrar usuário')
+    }
   },
-  updateCurrent(patch){
-    ensure()
-    const cur = this.current()
-    if(!cur) throw new Error('Nenhum usuário logado')
-    const updated = { ...cur, ...patch }
-    // persist in users list
-    const users = this.list().map(u => u.id === cur.id ? updated : u)
-    localStorage.setItem(KEY_USERS, JSON.stringify(users))
-    localStorage.setItem(KEY_CURRENT, JSON.stringify(updated))
-    return updated
+
+  // Login with email and password
+  async login({ email, password }) {
+    try {
+      const response = await api.post('/api/login', { email, password })
+      if (!response || !response.token) {
+        throw new Error(response?.error || 'Erro ao fazer login')
+      }
+
+      // Store the token and user data
+      localStorage.setItem(KEY_TOKEN, response.token)
+      localStorage.setItem(KEY_CURRENT, JSON.stringify(response.user))
+
+      return response.user
+    } catch (err) {
+      throw new Error(err.message || 'Erro ao fazer login')
+    }
+  },
+
+  // Fetch current user data from backend
+  async fetchCurrent() {
+    try {
+      const token = this.getToken()
+      if (!token) {
+        return null
+      }
+
+      const response = await api.get('/api/me')
+      if (!response || response.error) {
+        // Token inválido, fazer logout
+        this.logout()
+        return null
+      }
+
+      // Update cached user data
+      localStorage.setItem(KEY_CURRENT, JSON.stringify(response))
+      return response
+    } catch (err) {
+      // Token inválido ou expirado
+      this.logout()
+      return null
+    }
+  },
+
+  // Check if user is admin
+  ensureAdmin() {
+    const user = this.current()
+    return user && user.is_admin
+  },
+
+  // Logout
+  logout() {
+    localStorage.removeItem(KEY_TOKEN)
+    localStorage.removeItem(KEY_CURRENT)
+  },
+
+  // Check if user is logged in
+  isLoggedIn() {
+    return !!this.getToken()
   }
 }

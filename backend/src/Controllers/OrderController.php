@@ -5,6 +5,7 @@ namespace App\Controllers;
 
 use App\Http\Request;
 use App\Http\Response;
+use App\Http\AuthMiddleware;
 use App\Models\OrderModel;
 
 class OrderController
@@ -69,5 +70,14 @@ class OrderController
             }
             Response::json(['error'=>'Failed to delete order','message'=>$msg], 400);
         }
+    }
+
+    public function listUserOrders(Request $req): void
+    {
+        $payload = AuthMiddleware::requireAuth();
+        if (!$payload) Response::json(['error' => 'Unauthorized'], 401);
+
+        $orders = $this->orders->listByUser((int)$payload['id']);
+        Response::json($orders);
     }
 }

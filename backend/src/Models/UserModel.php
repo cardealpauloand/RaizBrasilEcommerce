@@ -20,4 +20,28 @@ class UserModel extends BaseModel
         $row = $stmt->fetch();
         return $row ?: null;
     }
+
+    public function findById(int $id): ?array
+    {
+        $stmt = $this->db->prepare('SELECT * FROM users WHERE id = ?');
+        $stmt->execute([$id]);
+        $row = $stmt->fetch();
+        return $row ?: null;
+    }
+
+    public function update(int $id, array $data): bool
+    {
+        $fields = [];
+        $values = [];
+        foreach ($data as $key => $value) {
+            if (in_array($key, ['name', 'phone', 'email'])) {
+                $fields[] = "$key = ?";
+                $values[] = $value;
+            }
+        }
+        if (empty($fields)) return true;
+        $values[] = $id;
+        $stmt = $this->db->prepare('UPDATE users SET ' . implode(', ', $fields) . ', updated_at = NOW() WHERE id = ?');
+        return $stmt->execute($values);
+    }
 }

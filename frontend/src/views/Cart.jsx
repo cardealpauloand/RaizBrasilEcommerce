@@ -1,50 +1,99 @@
 import React, {useState, useEffect, useMemo} from 'react'
 import CartController from '../controllers/CartController'
+import SavedItemModel from '../models/SavedItemModel'
 import ProductModel from '../models/ProductModel'
 
 export default function Cart({ onNavigate }){
-  const [cart, setCart] = useState(CartController.getCart())
-  const [saved, setSaved] = useState(()=>{
-    try{ return JSON.parse(localStorage.getItem('rb_saved_v1')||'[]') }catch{ return [] }
-  })
+  const [cart, setCart] = useState({ items: [] })
+  const [saved, setSaved] = useState([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(()=>{
-    setCart(CartController.getCart())
+    Promise.all([
+      CartController.getCart().then(setCart),
+      SavedItemModel.load().then(setSaved)
+    ])
+      .catch(console.error)
+      .finally(() => setLoading(false))
   }, [])
 
-  function inc(id, size){ setCart(CartController.add(id, 1, size||'M')) }
-  function dec(id, size){
-    const cur = cart.items.find(i=>i.productId===id && (i.size||'M')===(size||'M'))
-    const nextQty = ((cur?.qty)||1) - 1
-    setCart(CartController.update(id, nextQty, size||'M'))
-  }
-  function remove(id, size){
-    if(confirm('Remover este item do carrinho?')){
-      setCart(CartController.remove(id, size||'M'))
+  async function inc(id, size){
+    try {
+      const result = await CartController.add(id, 1, size||'M')
+      setCart(result)
+    } catch(err) {
+      console.error('Erro ao adicionar:', err)
     }
   }
 
-  function saveForLater(id, size){
-    const it = cart.items.find(i=>i.productId===id && (i.size||'M')===(size||'M'))
-    if(!it) return
-    const next = [...saved, { productId:id, size:size||'M', addedAt: Date.now() }]
-    localStorage.setItem('rb_saved_v1', JSON.stringify(next))
-    setSaved(next)
-    setCart(CartController.remove(id, size||'M'))
-  }
-  function moveToCart(id, size){
-    CartController.add(id, 1, size||'M')
-    setCart(CartController.getCart())
-    const next = saved.filter(s => !(s.productId===id && (s.size||'M')===(size||'M')))
-    localStorage.setItem('rb_saved_v1', JSON.stringify(next))
-    setSaved(next)
+  async function dec(id, size){
+    try {
+      const cur = cart.items.find(i=>(i.product_id||i.productId)===id && (i.size||'M')===(size||'M'))
+      const nextQty = ((cur?.qty)||1) - 1
+      const result = await CartController.update(cur.id || id, nextQty, size||'M')
+      setCart(result)
+    } catch(err) {
+      console.error('Erro ao decrementar:', err)
+    }
   }
 
-  const subtotal = useMemo(()=> cart.items.reduce((acc,it)=> acc + (it.price * it.qty), 0), [cart])
+  async function remove(id, size){
+    if(confirm('Remover este item do carrinho?')){
+      try {
+        const cur = cart.items.find(i=>(i.product_id||i.productId)===id && (i.size||'M')===(size||'M'))
+        const result = await CartController.remove(cur.id || id, size||'M')
+        setCart(result)
+      } catch(err) {
+        console.error('Erro ao remover:', err)
+      }
+    }
+  }
+
+  async function saveForLater(id, size){
+    const it = cart.items.find(i=>(i.product_id||i.productId)===id && (i.size||'M')===(size||'M'))
+    if(!it) return
+    try {
+      const savedItem = await SavedItemModel.add(id, size)
+      setSaved([...saved, savedItem])
+      const cur = cart.items.find(i=>(i.product_id||i.productId)===id && (i.size||'M')===(size||'M'))
+      const result = await CartController.remove(cur.id || id, size||'M')
+      setCart(result)
+    } catch(err) {
+      console.error('Erro ao salvar para depois:', err)
+    }
+  }
+
+  async function moveToCart(id, size){
+    try {
+      const result = await CartController.add(id, 1, size||'M')
+      setCart(result)
+      // Find the saved item by product_id and size
+      const savedItem = saved.find(s => s.product_id===id && (s.size||'M')===(size||'M'))
+      if(savedItem) {
+        await SavedItemModel.remove(savedItem.id)
+        setSaved(saved.filter(s => s.id !== savedItem.id))
+      }
+    } catch(err) {
+      console.error('Erro ao mover para carrinho:', err)
+    }
+  }
+
+  const subtotal = useMemo(()=> cart.items.reduce((acc,it)=> acc + ((it.price || 0) * (it.qty || 1)), 0), [cart])
   const shipping = useMemo(()=> subtotal === 0 ? 0 : (subtotal >= 200 ? 0 : 19.9), [subtotal])
   const total = useMemo(()=> subtotal + shipping, [subtotal, shipping])
   const freeLeft = useMemo(()=> Math.max(0, 200 - subtotal), [subtotal])
   const freeProgress = useMemo(()=> Math.min(1, subtotal/200), [subtotal])
+
+  if (loading) {
+    return (
+      <div className="container" style={{paddingTop:20}}>
+        <h2 style={{margin:'0 0 12px'}}>Seu Carrinho</h2>
+        <div className="panel" style={{display:'grid', gap:12, alignItems:'center', justifyItems:'center', padding:28}}>
+          <div style={{fontSize:14}}>Carregando carrinho...</div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="container" style={{paddingTop:20}}>
@@ -74,30 +123,31 @@ export default function Cart({ onNavigate }){
             </div>
 
             {cart.items.map(item => {
-              const p = ProductModel.findById(item.productId)
+              const productId = item.product_id || item.productId
+              const p = ProductModel.findById(productId)
               const img = p?.images?.[0]
               return (
-                <div key={item.productId + '_' + (item.size||'M')} className="panel" style={{display:'grid', gridTemplateColumns:'96px 1fr auto', gap:14, alignItems:'center'}}>
+                <div key={productId + '_' + (item.size||'M')} className="panel" style={{display:'grid', gridTemplateColumns:'96px 1fr auto', gap:14, alignItems:'center'}}>
                   <div style={{width:96, height:96, borderRadius:12, overflow:'hidden', background:'rgba(255,255,255,0.04)'}}>
                     {img ? <img src={img} alt={item.title} style={{width:'100%', height:'100%', objectFit:'cover'}}/> : null}
                   </div>
                   <div style={{display:'grid', gap:6}}>
                     <div style={{fontWeight:700}}>{item.title}</div>
-                    <div className="muted" style={{fontSize:12}}>Tamanho: {item.size || 'M'} • Preço: R$ {item.price.toFixed(2)}</div>
+                    <div className="muted" style={{fontSize:12}}>Tamanho: {item.size || 'M'} • Preço: R$ {(item.price || 0).toFixed(2)}</div>
                     <div className="muted" style={{fontSize:12}}>Entrega estimada: 3–7 dias úteis</div>
                     <div style={{display:'flex', gap:10, alignItems:'center', flexWrap:'wrap'}}>
                       <div className="qty" style={{display:'inline-flex', alignItems:'center', gap:6, background:'rgba(255,255,255,0.06)', borderRadius:999, padding:'4px 8px'}}>
-                        <button className="chip" style={{color:'#ffffff', fontWeight:700}} onClick={() => dec(item.productId, item.size)} disabled={item.qty<=1}>-</button>
+                        <button className="chip" style={{color:'#ffffff', fontWeight:700}} onClick={() => dec(productId, item.size)} disabled={item.qty<=1}>-</button>
                         <div className="chip" style={{color:'#ffffff', fontWeight:600}}>{item.qty}</div>
-                        <button className="chip" style={{color:'#ffffff', fontWeight:700}} onClick={() => inc(item.productId, item.size)}>+</button>
+                        <button className="chip" style={{color:'#ffffff', fontWeight:700}} onClick={() => inc(productId, item.size)}>+</button>
                       </div>
-                      <button className="btn-secondary" onClick={() => saveForLater(item.productId, item.size)}>Salvar para depois</button>
-                      <button className="btn" onClick={() => remove(item.productId, item.size)}>Remover</button>
+                      <button className="btn-secondary" onClick={() => saveForLater(productId, item.size)}>Salvar para depois</button>
+                      <button className="btn" onClick={() => remove(productId, item.size)}>Remover</button>
                     </div>
                   </div>
                   <div style={{textAlign:'right'}}>
                     <div className="muted" style={{fontSize:12}}>Subtotal</div>
-                    <div style={{fontWeight:800}}>R$ {(item.price * item.qty).toFixed(2)}</div>
+                    <div style={{fontWeight:800}}>R$ {((item.price || 0) * (item.qty || 1)).toFixed(2)}</div>
                   </div>
                 </div>
               )

@@ -1,4 +1,4 @@
-import React, {useState} from 'react'
+import React, {useState, useEffect} from 'react'
 import AuthController from '../controllers/AuthController'
 import UserModel from '../models/UserModel'
 
@@ -7,26 +7,26 @@ export default function Profile({ onNavigate, onUserChange }){
   const [mode, setMode] = useState('view')
   const [form, setForm] = useState({name:'', email:'', password:''})
 
-  function handleLogin(e){
+  async function handleLogin(e){
     e.preventDefault()
     // simple email validation (must contain @ and .com)
     const emailOk = /@/.test(form.email) && /\.com\b/.test(form.email)
     if(!emailOk){ return alert('Insira um email válido (deve conter @ e .com)') }
     try{
-      const u = AuthController.login({email:form.email, password:form.password})
+      const u = await AuthController.login({email:form.email, password:form.password})
       onUserChange(u)
       setMode('view')
     }catch(err){ alert(err.message) }
   }
 
-  function handleRegister(e){
+  async function handleRegister(e){
     e.preventDefault()
     // name: only letters (including accents) and spaces
     const nameOk = /^[A-Za-zÀ-ÿ\s]{2,}$/.test(form.name || '')
     if(!nameOk){ return alert('Nome inválido. Use apenas letras e espaços.') }
     const emailOk = /@/.test(form.email) && /\.com\b/.test(form.email)
     if(!emailOk){ return alert('Email inválido. Deve conter @ e .com') }
-    try{ const u = AuthController.register(form); onUserChange(u); setMode('view') }catch(err){ alert(err.message) }
+    try{ const u = await AuthController.register(form); onUserChange(u); setMode('view') }catch(err){ alert(err.message) }
   }
 
   if(!user){
@@ -168,7 +168,24 @@ function ProfileAddressForm({ user, onUserChange }){
 }
 
 function OrdersList({ onNavigate, userId }){
-  const orders = AuthController.listOrders().filter(o => o.user && o.user.id === userId)
+  const [orders, setOrders] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    AuthController.listOrders()
+      .then(setOrders)
+      .catch(err => console.error('Erro ao carregar pedidos:', err))
+      .finally(() => setLoading(false))
+  }, [])
+
+  if(loading){
+    return (
+      <div className="panel" style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:56}}>
+        <div className="muted">Carregando pedidos...</div>
+      </div>
+    )
+  }
+
   if(orders.length === 0){
     return (
       <div className="panel" style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:56}}>
@@ -183,11 +200,11 @@ function OrdersList({ onNavigate, userId }){
         <div key={o.id} style={{display:'grid', gap:6, border:'1px solid rgba(255,255,255,0.12)', borderRadius:10, padding:10, background:'var(--panel)'}}>
           <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
             <div style={{fontWeight:800}}>Pedido {o.id}</div>
-            <div className="muted">{new Date(o.date).toLocaleDateString('pt-BR')}</div>
+            <div className="muted">{new Date(o.created_at).toLocaleDateString('pt-BR')}</div>
           </div>
           <div className="muted">Total: R$ {Number(o.total).toFixed(2)}</div>
           <div style={{display:'grid', gap:6}}>
-            {o.items.map((it, idx) => (
+            {o.items && o.items.map((it, idx) => (
               <div key={idx} style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
                 <div>{it.title} <span className="muted">• Tam: {it.size || 'M'}</span></div>
                 <div className="muted">Qtd: {it.qty}</div>

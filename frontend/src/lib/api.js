@@ -12,7 +12,15 @@ function base(){
 
 async function request(path, { method='GET', body, headers }={}){
   const url = base() + path
-  const opts = { method, headers: { 'Content-Type':'application/json', ...(headers||{}) } }
+  const headerObj = { 'Content-Type':'application/json', ...(headers||{}) }
+
+  // Add JWT token if available
+  const token = localStorage.getItem('rb_token_v1')
+  if (token) {
+    headerObj['Authorization'] = `Bearer ${token}`
+  }
+
+  const opts = { method, headers: headerObj }
   if(body !== undefined) opts.body = typeof body === 'string' ? body : JSON.stringify(body)
   const ctrl = new AbortController()
   const t = setTimeout(()=> ctrl.abort(), 8000)

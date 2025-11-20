@@ -35,10 +35,10 @@ export default function AuthHub({ onNavigate, onUserChange }) {
   function validatePassword(pw){ return typeof pw === 'string' && pw.length >= 6 }
   function validateName(name){ return /^[A-Za-zÀ-ÿ\s]{2,}$/.test(name) }
 
-  function run(action, fn){
+  async function run(action, fn){
     setLoading(true); setError(null); setSuccess(null)
     try {
-      const user = fn()
+      const user = await fn()
       onUserChange && onUserChange(user)
       // navega imediatamente para perfil
       onNavigate('profile')

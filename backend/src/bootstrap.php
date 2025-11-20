@@ -22,6 +22,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'OPTIONS') {
 require_once __DIR__ . '/Config/Env.php';
 Env::init(__DIR__ . '/..');
 
+// Initialize JWT
+require_once __DIR__ . '/Utils/JWT.php';
+use App\Utils\JWT;
+$jwtSecret = Env::get('JWT_SECRET', 'dev-secret-key-change-in-production');
+JWT::init($jwtSecret);
+
 // Simple error reporting
 if (Env::get('APP_DEBUG', 'true') === 'true') {
     ini_set('display_errors', '1');
